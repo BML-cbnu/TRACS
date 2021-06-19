@@ -8,6 +8,7 @@ import GPRegression as GPR
 import gapGP
 import genNetwork as genN
 import matplotlib.pyplot as plt
+import rfpca
 
 def arg_parse():
   parser = argparse.ArgumentParser()
@@ -20,6 +21,7 @@ def arg_parse():
   parser.add_argument('-m', '--method', default="KM", help="method for clustering ")
   parser.add_argument('-ks', '--kstart', type=int, default=1, help="Starting k for testing the number of clusters")
   parser.add_argument('-ke', '--kend', type=int, default=10, help="Ending k for testing the number of clusters")
+  parser.add_argument('-fpca', dest='fpca',action='store_const',const=True,default=False, help="functional pca")
 
   args = vars(parser.parse_args())
   return args
@@ -58,6 +60,7 @@ def main(inputs) :
   ks = list(range(inputs['kstart'], inputs['kend']+1))
   reps = [inputs['repnums']]
   X = np.array(map(int, inputs['timepoints'].split(',')))
+
   expFile = inputs['file']
   norm = True
   delim = '\t'
@@ -74,8 +77,19 @@ def main(inputs) :
   names, series, series_avg = loadData(expFile, reps, delim, norm)
   print '# of Genes:', series_avg.shape[0], '\t# of time points:', series_avg.shape[1]
 
+  if(input['fpca'] == True):
+    phi = rfpca.fpca(names,X_list,series.flatten())
+    phi_ = np.array(phi).T
+    series_ = phi_[0] * series
+    df = pd.DataFrame(series_)
+    df.index = names
+    df.to_csv("input/fpca_csv.txt",header=False)  
+    input["file"] = "input/fpca_csv.txt"
+    print "fpca Done // ", input['file']
   # Calculate gap statistics
-  c, std, c_long, std_long, p, k, labels = gapGP.gap(X, X_pred, series_avg, inputs['method'], inputs['outdir'], numS, ks)
+
+  # c, std, c_long, std_long, p, k, labels = gapGP.gap(X, X_pred, series_avg, inputs['method'], inputs['outdir'], numS, ks)
+  k  = 12
   print 'Optimal K predicted:', k
   print 'Generating a network ...'
   genN.genNetwork(inputs, k) 
